@@ -14,7 +14,7 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(paddle-custom-cpu CXX C)
+project(paddle-musa CXX C)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -22,7 +22,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 option(WITH_TESTING "compile with unit testing" ON)
 option(ON_INFER "compile with inference c++ lib" OFF)
 
-set(PLUGIN_NAME "paddle-custom-cpu")
+set(PLUGIN_NAME "paddle-musa")
 set(PLUGIN_VERSION "0.0.1")
 
 if(NOT WITH_TESTING)
@@ -31,16 +31,18 @@ endif()
 include(paddle)
 
 include_directories(${PADDLE_INC_DIR} ${CMAKE_SOURCE_DIR}
-                    ${CMAKE_SOURCE_DIR}/kernels)
+                    ${CMAKE_SOURCE_DIR}/kernels ${CMAKE_SOURCE_DIR}/runtime)
 link_directories(${PADDLE_LIB_DIR})
 
 add_definitions(-std=c++14)
+add_definitions(-DPADDLE_WITH_CUSTOM_KERNEL)
 
 file(
   GLOB_RECURSE PLUGIN_SRCS
   RELATIVE ${CMAKE_SOURCE_DIR}
-  kernels/*.cc)
-list(APPEND PLUGIN_SRCS runtime/runtime.cc)
+  kernels/*.cc
+  runtime/*.cc
+  runtime/mudnn/*.cc)
 
 # build shared library
 add_library(${PLUGIN_NAME} SHARED ${PLUGIN_SRCS})

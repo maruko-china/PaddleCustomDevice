@@ -25,19 +25,16 @@
 #include <iostream>
 #include <musa_runtime.h>
 #include "paddle/phi/backends/device_ext.h"
+#include "runtime/runtime.h"
 
-#define CHECK_MUSA(func)											                    \
-{																                                  \
-	musaError_t status = (func);									                  \
-	if (status != musaSuccess) {									                  \
-		fprintf(stderr, "MUSA error at %s:%d, code=%d (%s)\n",	      \
-				__FILE__, __LINE__, status, musaGetErrorString(status));  \
-		return C_FAILED;										                          \
-	}															                                  \
-}
-
-#define MEMORY_FRACTION 0.5f
-thread_local int global_current_device = 0;
+struct C_CCLComm_st {
+  size_t rank;
+  size_t nranks;
+  sem_t *sig;
+  sem_t *sig_2;
+  std::string sig_name;
+  std::string sig_2_name;
+};
 
 C_Status SetDevice(const C_Device device) {
   CHECK_MUSA(musaSetDevice(device->id));
@@ -56,7 +53,9 @@ C_Status DestroyDevice(const C_Device device) { return C_SUCCESS; }
 C_Status Finalize() { return C_SUCCESS; }
 
 C_Status GetDevicesCount(size_t *count) {
-  CHECK_MUSA(musaGetDeviceCount(reinterpret_cast<int*>(count)));
+  int temp = 0;
+  CHECK_MUSA(musaGetDeviceCount(&temp));
+  *count = static_cast<size_t>(temp);
   return C_SUCCESS;
 }
 
@@ -214,7 +213,7 @@ C_Status CreateStream(const C_Device device, C_Stream *stream) {
 
 C_Status DestroyStream(const C_Device device, C_Stream stream) {
   CHECK_MUSA(musaSetDevice(device->id));
-  CHECK_MUSA(musaStreamDestroy(*(reinterpret_cast<musaStream_t*>(stream))));
+  CHECK_MUSA(musaStreamDestroy((reinterpret_cast<musaStream_t>(stream))));
   return C_SUCCESS;
 }
 
@@ -277,14 +276,6 @@ C_Status DeviceMinChunkSize(const C_Device device, size_t *size) {
   return C_SUCCESS;
 }
 
-struct C_CCLComm_st {
-  size_t rank;
-  size_t nranks;
-  sem_t *sig;
-  sem_t *sig_2;
-  std::string sig_name;
-  std::string sig_2_name;
-};
 
 // for unittest
 C_Status XcclGetUniqueIdSize(size_t *sz) {
