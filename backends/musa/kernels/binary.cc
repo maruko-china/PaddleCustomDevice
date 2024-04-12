@@ -111,8 +111,23 @@ namespace custom_kernel {
                       const phi::DenseTensor& x,
                       const phi::DenseTensor& y,
                       phi::DenseTensor* out) {
-    std::cout<<"pow kernel!!"<<std::endl;
     Binary_kernel<T>(dev_ctx,x,y,out,BINARY_MODE::POW);
+  }
+
+  template <typename T>
+  void MaximumKernel(const phi::Context& dev_ctx,
+                      const phi::DenseTensor& x,
+                      const phi::DenseTensor& y,
+                      phi::DenseTensor* out) {
+    Binary_kernel<T>(dev_ctx,x,y,out,BINARY_MODE::MAX);
+  }
+
+  template <typename T>
+  void MinimumKernel(const phi::Context& dev_ctx,
+                      const phi::DenseTensor& x,
+                      const phi::DenseTensor& y,
+                      phi::DenseTensor* out) {
+    Binary_kernel<T>(dev_ctx,x,y,out,BINARY_MODE::MIN);
   }
 
 }  // namespace custom_kernel
@@ -208,3 +223,21 @@ PD_BUILD_PHI_KERNEL(elementwise_pow,
                     int64_t,
                     float,
                     double) {}
+
+PD_BUILD_PHI_KERNEL(maximum,
+                    musa,
+                    ALL_LAYOUT,
+                    custom_kernel::MaximumKernel,
+                    int32_t,
+                    int64_t,
+                    float,
+                    double) {}
+
+PD_BUILD_PHI_KERNEL(minimum,
+                    musa,
+                    ALL_LAYOUT,
+                    custom_kernel::MinimumKernel,
+                    int32_t,
+                    int64_t,
+                    float,
+                    double) {}              
