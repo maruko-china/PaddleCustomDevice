@@ -74,6 +74,47 @@ namespace custom_kernel {
     Binary_kernel<bool>(dev_ctx,x,y,out,BINARY_MODE::NE);
   }
 
+  template <typename T>
+  void GreaterThanKernel(const phi::Context& dev_ctx,
+                      const phi::DenseTensor& x,
+                      const phi::DenseTensor& y,
+                      phi::DenseTensor* out) {
+    Binary_kernel<bool>(dev_ctx,x,y,out,BINARY_MODE::GT);
+  }
+
+  template <typename T>
+  void GreaterEqualKernel(const phi::Context& dev_ctx,
+                      const phi::DenseTensor& x,
+                      const phi::DenseTensor& y,
+                      phi::DenseTensor* out) {
+    Binary_kernel<bool>(dev_ctx,x,y,out,BINARY_MODE::GE);
+  }
+
+  template <typename T>
+  void LessEqualKernel(const phi::Context& dev_ctx,
+                      const phi::DenseTensor& x,
+                      const phi::DenseTensor& y,
+                      phi::DenseTensor* out) {
+    Binary_kernel<bool>(dev_ctx,x,y,out,BINARY_MODE::LE);
+  }
+
+  template <typename T>
+  void LessThanKernel(const phi::Context& dev_ctx,
+                      const phi::DenseTensor& x,
+                      const phi::DenseTensor& y,
+                      phi::DenseTensor* out) {
+    Binary_kernel<bool>(dev_ctx,x,y,out,BINARY_MODE::LT);
+  }
+
+  template <typename T>
+  void ElementWisePowKernel(const phi::Context& dev_ctx,
+                      const phi::DenseTensor& x,
+                      const phi::DenseTensor& y,
+                      phi::DenseTensor* out) {
+    std::cout<<"pow kernel!!"<<std::endl;
+    Binary_kernel<T>(dev_ctx,x,y,out,BINARY_MODE::POW);
+  }
+
 }  // namespace custom_kernel
 
 
@@ -121,4 +162,49 @@ PD_BUILD_PHI_KERNEL(not_equal,
                     int32_t,
                     int64_t,
                     float,
-                    double) {}                  
+                    double) {}                
+                
+PD_BUILD_PHI_KERNEL(greater_than,
+                    musa,
+                    ALL_LAYOUT,
+                    custom_kernel::GreaterThanKernel,
+                    int32_t,
+                    int64_t,
+                    float,
+                    double) {}
+
+PD_BUILD_PHI_KERNEL(greater_equal,
+                    musa,
+                    ALL_LAYOUT,
+                    custom_kernel::GreaterEqualKernel,
+                    int32_t,
+                    int64_t,
+                    float,
+                    double) {}
+
+PD_BUILD_PHI_KERNEL(less_equal,
+                    musa,
+                    ALL_LAYOUT,
+                    custom_kernel::LessEqualKernel,
+                    int32_t,
+                    int64_t,
+                    float,
+                    double) {}
+
+PD_BUILD_PHI_KERNEL(less_than,
+                    musa,
+                    ALL_LAYOUT,
+                    custom_kernel::LessThanKernel,
+                    int32_t,
+                    int64_t,
+                    float,
+                    double) {}                    
+
+PD_BUILD_PHI_KERNEL(elementwise_pow,
+                    musa,
+                    ALL_LAYOUT,
+                    custom_kernel::ElementWisePowKernel,
+                    int32_t,
+                    int64_t,
+                    float,
+                    double) {}
