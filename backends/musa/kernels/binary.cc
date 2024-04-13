@@ -2,6 +2,29 @@
 #include "runtime/mudnn/Handle.h"
 #include "paddle/phi/extension.h"
 
+#define BINARY_OP(op_name,mode)                                     \
+namespace custom_kernel{                                            \
+    using BINARY_MODE = ::musa::dnn::Binary::Mode;                  \
+    using UNARY_MODE = ::musa::dnn::Unary::Mode;                    \
+    template <typename T, typename Context>                         \
+    void op_name##Kernel(const Context& dev_ctx,                    \
+                const phi::DenseTensor& x,                          \
+                const phi::DenseTensor& y,                          \
+                phi::DenseTensor* out) {                            \
+    Binary_kernel<T>(dev_ctx,x,y,out,mode);                         \
+  }                                                                 \
+}                                                                   \
+PD_REGISTER_PLUGIN_KERNEL(op_name,                                  \
+                        musa,                                       \
+                        ALL_LAYOUT,                                 \
+                        custom_kernel::op_name##Kernel,             \
+                        int,                                        \
+                        int64_t,                                    \
+                        float,                                      \
+                        phi::dtype::float16,                        \
+                        phi::dtype::bfloat16,                       \
+                        double) {}
+
 namespace custom_kernel {
   using BINARY_MODE = ::musa::dnn::Binary::Mode;
   using UNARY_MODE = ::musa::dnn::Unary::Mode;
@@ -22,24 +45,8 @@ namespace custom_kernel {
       CHECK_MUDNN_STATUS(bop.Run(h, musa_out, musa_self, musa_other),"Run");
   }
 
-  template <typename T, typename Context>
-    void AddKernel(const Context& dev_ctx,
-                const phi::DenseTensor& x,
-                const phi::DenseTensor& y,
-                phi::DenseTensor* out) {
-    std::cout<<"hello"<<std::endl;
-    Binary_kernel<T>(dev_ctx,x,y,out,BINARY_MODE::ADD);
-  }
-
 }
 
-PD_REGISTER_PLUGIN_KERNEL(add,
-                          musa,
-                          ALL_LAYOUT,
-                          custom_kernel::AddKernel,
-                          int,
-                          int64_t,
-                          float,
-                          phi::dtype::float16,
-                          phi::dtype::bfloat16,
-                          double) {}
+BINARY_OP(add,BINARY_MODE::ADD)
+BINARY_OP(multiply,BINARY_MODE::MUL)
+BINARY_OP(divide,BINARY_MODE::DIV)
