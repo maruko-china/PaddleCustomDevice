@@ -9,6 +9,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 include(paddle)
 include(version)
 include(generic)
+include(external/musa)
 include_directories(${CMAKE_SOURCE_DIR})
 
 option(WITH_KERNELS "compile with custom kernels" ON)
@@ -19,20 +20,6 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
                "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
-
-# Compile options
-set(CMAKE_C_FLAGS_DEBUG "-g")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG")
-set(CMAKE_C_FLAGS_MINSIZEREL "-Os -DNDEBUG")
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG")
-
-add_compile_options(-Wreturn-type -Werror -Wuninitialized
-                    -Wno-deprecated-declarations)
 
 add_definitions(-DPADDLE_WITH_CUSTOM_DEVICE)
 add_definitions(-DPADDLE_WITH_CUSTOM_KERNEL)
@@ -61,6 +48,7 @@ include(third_party)
 add_dependencies(${PLUGIN_NAME} third_party)
 target_link_libraries(${PLUGIN_NAME} PRIVATE ${PADDLE_CORE_LIB})
 target_link_libraries(${PLUGIN_NAME} PRIVATE pybind)
+target_link_libraries(${PLUGIN_NAME} PRIVATE ${MUSA_DEPENDENT_LIBRARIES})
 
 # testing
 if(WITH_TESTING)

@@ -19,188 +19,368 @@
 #include <vector>
 
 #include "glog/logging.h"
-// #include "sucl/br_cl.h"
-
-constexpr std::size_t br_compute_capability = 75;
 
 
-C_Status set_device(const C_Device device) {
+C_Status SetDevice(const C_Device device) {
+  CHECK_MUSA(musaSetDevice(device->id));
   return C_SUCCESS;
 }
 
-C_Status get_device(const C_Device device) {
+C_Status GetDevice(const C_Device device) {
+  int device_id = 0;
+  CHECK_MUSA(musaGetDevice(&device_id));
+  device->id = device_id;
   return C_SUCCESS;
 }
 
-C_Status get_device_count(size_t *count) {
+C_Status DestroyDevice(const C_Device device) { return C_SUCCESS; }
 
+C_Status Finalize() { return C_SUCCESS; }
+
+C_Status GetDevicesCount(size_t *count) {
+  int temp = 0;
+  CHECK_MUSA(musaGetDeviceCount(&temp));
+  *count = static_cast<size_t>(temp);
   return C_SUCCESS;
 }
 
-C_Status get_device_list(size_t *device) {
+C_Status GetDevicesList(size_t *devices) {
+  size_t device_count=0;
+  if(GetDevicesCount(&device_count)==C_SUCCESS){
+    for(int i=0;i<device_count;i++){
+      devices[i]=i;
+    }
+    return C_SUCCESS;
+  }
+  return C_FAILED;
+}
 
+C_Status MemCpyh2d(const C_Device device,
+                void *dst,
+                const void *src,
+                size_t size) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMemcpy(dst, src, size, musaMemcpyHostToDevice));
   return C_SUCCESS;
 }
 
-C_Status get_compute_capability(size_t *compute_capability) {
+C_Status MemCpyd2d(const C_Device device,
+                void *dst,
+                const void *src,
+                size_t size) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMemcpy(dst, src, size, musaMemcpyDeviceToDevice));
   return C_SUCCESS;
 }
 
-C_Status get_runtime_version(size_t *version) {
+C_Status MemCpyd2h(const C_Device device,
+                void *dst,
+                const void *src,
+                size_t size) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMemcpy(dst, src, size, musaMemcpyDeviceToHost));
   return C_SUCCESS;
 }
 
-C_Status get_driver_version(size_t *version) {
-  return C_SUCCESS;
-}
-
-C_Status memcpy_h2d(const C_Device device,
-                    void *dst,
-                    const void *src,
-                    size_t size) {
-  return C_SUCCESS;
-}
-
-C_Status memcpy_d2d(const C_Device device,
-                    void *dst,
-                    const void *src,
-                    size_t size) {
-  return C_SUCCESS;
-}
-
-C_Status memcpy_d2h(const C_Device device,
-                    void *dst,
-                    const void *src,
-                    size_t size) {
-
-  return C_SUCCESS;
-}
-
-C_Status async_memcpy_h2d(const C_Device device,
-                          C_Stream stream,
-                          void *dst,
-                          const void *src,
-                          size_t size) {
-  return C_SUCCESS;
-}
-
-C_Status async_memcpy_d2d(const C_Device device,
-                          C_Stream stream,
-                          void *dst,
-                          const void *src,
-                          size_t size) {
-  return C_SUCCESS;
-}
-
-C_Status async_memcpy_d2h(const C_Device device,
-                          C_Stream stream,
-                          void *dst,
-                          const void *src,
-                          size_t size) {
-  return C_SUCCESS;
-}
-
-C_Status allocate(const C_Device device, void **ptr, size_t size) {
+C_Status AsyncMemCpy(const C_Device device,
+                     C_Stream stream,
+                     void *dst,
+                     const void *src,
+                     size_t size) {
+  musaError_t musaStatus;
+  musaStatus = musaSetDevice(device->id);
+  if (musaStatus != musaSuccess) {
+        return C_FAILED;
+  }
 
   return C_SUCCESS;
 }
 
-C_Status deallocate(const C_Device device, void *ptr, size_t size) {
+C_Status MemCpyP2P(const C_Device dst_device,
+                   const C_Device src_device,
+                   void *dst,
+                   const void *src,
+                   size_t size) {
+    musaError_t musaStatus;
+    int canAccessPeer = 0;
+
+    musaStatus = musaDeviceCanAccessPeer(&canAccessPeer, dst_device->id, src_device->id);
+    if (musaStatus != musaSuccess || canAccessPeer == 0) {
+        return C_FAILED;
+    }
+
+    musaStatus = musaDeviceEnablePeerAccess(src_device->id, 0);
+    if (musaStatus != musaSuccess) {
+        return C_FAILED;
+    }
+
+    // 执行P2P内存复制
+    musaStatus = musaMemcpyPeer(dst, dst_device->id, src, src_device->id, size);
+    if (musaStatus != musaSuccess) {
+        musaDeviceDisablePeerAccess(src_device->id);
+        return C_FAILED;
+    }
+
+    // 禁用P2P访问
+    musaStatus = musaDeviceDisablePeerAccess(src_device->id);
+    if (musaStatus != musaSuccess) {
+        return C_FAILED;
+    }
+
+    return C_SUCCESS;
+}
+
+C_Status AsyncMemCpyP2P(const C_Device dst_device,
+                        const C_Device src_device,
+                        C_Stream stream,
+                        void *dst,
+                        const void *src,
+                        size_t size) {
+  musaError_t musaStatus;
+  int canAccessPeer = 0;
+
+  // 检查两个设备之间是否支持P2P访问
+  musaStatus = musaDeviceCanAccessPeer(&canAccessPeer, dst_device->id, src_device->id);
+  if (musaStatus != musaSuccess || canAccessPeer == 0) {
+      return C_FAILED;
+  }
+
+  // 启用P2P访问
+  musaStatus = musaDeviceEnablePeerAccess(src_device->id, 0);
+  if (musaStatus != musaSuccess) {
+      return C_FAILED;
+  }
+
+  // 执行异步P2P内存复制
+  musaStatus = musaMemcpyPeerAsync(dst, dst_device->id, src, src_device->id, size, reinterpret_cast<musaStream_t>(stream));
+  if (musaStatus != musaSuccess) {
+      musaDeviceDisablePeerAccess(src_device->id);
+      return C_FAILED;
+  }
+
+  CHECK_MUSA(musaDeviceDisablePeerAccess(src_device->id));
   return C_SUCCESS;
 }
 
-C_Status create_stream(const C_Device device, C_Stream *stream) {
+C_Status Device_Allocate(const C_Device device, void **ptr, size_t size) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMalloc(ptr, size));
   return C_SUCCESS;
 }
 
-C_Status destroy_stream(const C_Device device, C_Stream stream) {
+C_Status Host_Allocate(const C_Device device, void **ptr, size_t size) {
+  auto data = malloc(size);
+  if (data) {
+    *ptr = data;
+    return C_SUCCESS;
+  } else {
+    *ptr = nullptr;
+  }
+  return C_FAILED;
+}
+
+C_Status Host_Deallocate(const C_Device device, void *ptr, size_t size) {
+  free(ptr); 
+  return C_SUCCESS; 
+}
+
+C_Status Device_Deallocate(const C_Device device, void *ptr, size_t size) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaFree(ptr));
   return C_SUCCESS;
 }
 
-C_Status create_event(const C_Device device, C_Event *event) {
+C_Status CreateStream(const C_Device device, C_Stream *stream) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaStreamCreate(reinterpret_cast<musaStream_t*>(stream)));
   return C_SUCCESS;
 }
 
-C_Status record_event(const C_Device device, C_Stream stream, C_Event event) {
-
+C_Status DestroyStream(const C_Device device, C_Stream stream) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaStreamDestroy((reinterpret_cast<musaStream_t>(stream))));
   return C_SUCCESS;
 }
 
-C_Status destroy_event(const C_Device device, C_Event event) {
+C_Status CreateEvent(const C_Device device, C_Event *event) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaEventCreate(reinterpret_cast<musaEvent_t*>(event)));
   return C_SUCCESS;
 }
 
-C_Status sync_device(const C_Device device) {
+C_Status RecordEvent(const C_Device device, C_Stream stream, C_Event event) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaEventRecord(reinterpret_cast<musaEvent_t>(event),reinterpret_cast<musaStream_t>(stream)));
   return C_SUCCESS;
 }
 
-C_Status sync_stream(const C_Device device, C_Stream stream) {
+C_Status DestroyEvent(const C_Device device, C_Event event) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaEventDestroy((reinterpret_cast<musaEvent_t>(event))));
   return C_SUCCESS;
 }
 
-C_Status sync_event(const C_Device device, C_Event event) {
+C_Status SyncDevice(const C_Device device) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaDeviceSynchronize());
+  return C_SUCCESS; 
+}
+
+C_Status SyncStream(const C_Device device, C_Stream stream) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaStreamSynchronize(reinterpret_cast<musaStream_t>(stream)));
   return C_SUCCESS;
 }
 
-C_Status stream_wait_event(const C_Device device,
-                           C_Stream stream,
-                           C_Event event) {
+C_Status SyncEvent(const C_Device device, C_Event event) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaEventSynchronize(reinterpret_cast<musaEvent_t>(event)));
+  return C_SUCCESS;  
+  }
+
+C_Status StreamWaitEvent(const C_Device device,
+                         C_Stream stream,
+                         C_Event event) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaStreamWaitEvent(reinterpret_cast<musaStream_t>(stream),reinterpret_cast<musaEvent_t>(event)));
+  return C_SUCCESS;  
+}
+
+C_Status VisibleDevices(size_t *devices) { return C_SUCCESS; }
+
+C_Status DeviceMemStats(const C_Device device,
+                        size_t *total_memory,
+                        size_t *free_memory) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMemGetInfo(free_memory,total_memory));
   return C_SUCCESS;
 }
 
-C_Status memstats(const C_Device device,
-                  size_t *total_memory,
-                  size_t *free_memory) {
+C_Status DeviceMinChunkSize(const C_Device device, size_t *size) {
+  *size = 512;
   return C_SUCCESS;
 }
 
-C_Status get_min_chunk_size(const C_Device device, size_t *size) {
 
+// for unittest
+C_Status XcclGetUniqueIdSize(size_t *sz) {
   return C_SUCCESS;
 }
 
-C_Status get_max_chunk_size(const C_Device device, size_t *size) {
-
+C_Status XcclGetUniqueId(C_CCLRootId *unique_id) {
   return C_SUCCESS;
 }
 
-C_Status init() { return C_SUCCESS; }
+C_Status XcclCommInitRank(size_t ranks,
+                          C_CCLRootId *unique_id,
+                          size_t rank,
+                          C_CCLComm *comm) {
+  return C_SUCCESS;
+}
 
-C_Status deinit() { return C_SUCCESS; }
+C_Status XcclDestroyComm(C_CCLComm comm) {
+  return C_SUCCESS;
+}
+
+C_Status XcclAllReduce(void *send_buf,
+                       void *recv_buf,
+                       size_t count,
+                       C_DataType data_type,
+                       C_CCLReduceOp op,
+                       C_CCLComm comm,
+                       C_Stream stream) {
+  return C_SUCCESS;
+}
+
+C_Status XcclBroadcast(void *buf,
+                       size_t count,
+                       C_DataType data_type,
+                       size_t root,
+                       C_CCLComm comm,
+                       C_Stream stream) {
+  return C_SUCCESS;
+}
+
+C_Status ProfilerInitialize(C_Profiler prof, void **user_data) {
+  return C_SUCCESS;
+}
+
+C_Status ProfilerFinalize(C_Profiler prof, void *user_data) {
+  return C_SUCCESS;
+}
+
+C_Status ProfilerPrepare(C_Profiler prof, void *user_data) { return C_SUCCESS; }
+
+C_Status ProfilerStart(C_Profiler prof, void *user_data) { return C_SUCCESS; }
+
+C_Status ProfilerStop(C_Profiler prof, void *user_data) { return C_SUCCESS; }
+
+C_Status ProfilerCollectData(C_Profiler prof,
+                             uint64_t start_ns,
+                             void *user_data) {
+  return C_SUCCESS;
+}
 
 void InitPlugin(CustomRuntimeParams *params) {
   PADDLE_CUSTOM_RUNTIME_CHECK_VERSION(params);
   params->device_type = const_cast<char *>("musa");
-  params->sub_device_type = const_cast<char *>("S4000");
+  musaDeviceProp properties;
+  musaGetDeviceProperties(&properties, 0);
+  params->sub_device_type = properties.name;
 
-  params->interface->set_device = set_device;
-  params->interface->get_device = get_device;
-  params->interface->create_stream = create_stream;
-  params->interface->destroy_stream = destroy_stream;
-  params->interface->create_event = create_event;
-  params->interface->destroy_event = destroy_event;
-  params->interface->record_event = record_event;
-  params->interface->synchronize_device = sync_device;
-  params->interface->synchronize_stream = sync_stream;
-  params->interface->synchronize_event = sync_event;
-  params->interface->stream_wait_event = stream_wait_event;
-  params->interface->memory_copy_h2d = memcpy_h2d;
-  params->interface->memory_copy_d2d = memcpy_d2d;
-  params->interface->memory_copy_d2h = memcpy_d2h;
-  params->interface->async_memory_copy_h2d = async_memcpy_h2d;
-  params->interface->async_memory_copy_d2d = async_memcpy_d2d;
-  params->interface->async_memory_copy_d2h = async_memcpy_d2h;
-  params->interface->device_memory_allocate = allocate;
-  params->interface->device_memory_deallocate = deallocate;
-  params->interface->get_device_count = get_device_count;
-  params->interface->get_device_list = get_device_list;
-  params->interface->device_memory_stats = memstats;
-  params->interface->device_min_chunk_size = get_min_chunk_size;
-  params->interface->device_max_chunk_size = get_max_chunk_size;
-  params->interface->get_compute_capability = get_compute_capability;
-  params->interface->get_runtime_version = get_runtime_version;
-  params->interface->get_driver_version = get_driver_version;
+  memset(reinterpret_cast<void *>(params->interface),
+         0,
+         sizeof(C_DeviceInterface));
 
-  params->interface->initialize = init;
-  params->interface->finalize = deinit;
+  params->interface->finalize = Finalize;
+
+  params->interface->set_device = SetDevice;
+  params->interface->get_device = GetDevice;
+  params->interface->deinit_device = DestroyDevice;
+
+  params->interface->create_stream = CreateStream;
+  params->interface->destroy_stream = DestroyStream;
+
+  params->interface->create_event = CreateEvent;
+  params->interface->destroy_event = DestroyEvent;
+  params->interface->record_event = RecordEvent;
+
+  params->interface->synchronize_device = SyncDevice;
+  params->interface->synchronize_stream = SyncStream;
+  params->interface->synchronize_event = SyncEvent;
+  params->interface->stream_wait_event = StreamWaitEvent;
+
+  params->interface->memory_copy_h2d = MemCpyh2d;
+  params->interface->memory_copy_d2d = MemCpyd2d;
+  params->interface->memory_copy_d2h = MemCpyd2h;
+  params->interface->memory_copy_p2p = MemCpyP2P;
+  params->interface->async_memory_copy_h2d = AsyncMemCpy;
+  params->interface->async_memory_copy_d2d = AsyncMemCpy;
+  params->interface->async_memory_copy_d2h = AsyncMemCpy;
+  params->interface->async_memory_copy_p2p = AsyncMemCpyP2P;
+  params->interface->device_memory_allocate = Device_Allocate;
+  params->interface->host_memory_allocate = Host_Allocate;
+  params->interface->unified_memory_allocate = Host_Allocate;
+  params->interface->device_memory_deallocate = Device_Deallocate;
+  params->interface->host_memory_deallocate = Host_Deallocate;
+  params->interface->unified_memory_deallocate = Host_Deallocate;
+
+  params->interface->get_device_count = GetDevicesCount;
+  params->interface->get_device_list = GetDevicesList;
+  params->interface->device_memory_stats = DeviceMemStats;
+  params->interface->device_min_chunk_size = DeviceMinChunkSize;
+
+  params->interface->xccl_get_unique_id_size = XcclGetUniqueIdSize;
+  params->interface->xccl_get_unique_id = XcclGetUniqueId;
+  params->interface->xccl_comm_init_rank = XcclCommInitRank;
+  params->interface->xccl_destroy_comm = XcclDestroyComm;
+  params->interface->xccl_all_reduce = XcclAllReduce;
+  params->interface->xccl_broadcast = XcclBroadcast;
+
+  params->interface->profiler_collect_trace_data = ProfilerCollectData;
+  params->interface->profiler_initialize = ProfilerInitialize;
+  params->interface->profiler_finalize = ProfilerFinalize;
+  params->interface->profiler_start_tracing = ProfilerStart;
+  params->interface->profiler_stop_tracing = ProfilerStop;
+  params->interface->profiler_prepare_tracing = ProfilerPrepare;
 }
