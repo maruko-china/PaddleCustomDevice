@@ -12,7 +12,7 @@ limitations under the License. */
 #include "paddle/phi/extension.h"
 #include "kernels/musa/array.h"
 using phi::DenseTensorMeta,phi::DenseTensor,phi::DDim;
-namespace musa {
+namespace custom_kernel {
 bool VerifyThreadConfigurationParameters(const dim3& block, const dim3& grid) {
   return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
          block.x * block.y * block.z <= 1024 &&
@@ -537,22 +537,14 @@ void ContiguousKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace musa
+}  // namespace custom_kernel
 
 PD_REGISTER_PLUGIN_KERNEL(contiguous,
                    musa,
                    ALL_LAYOUT,
-                   musa::ContiguousKernel,
+                   custom_kernel::ContiguousKernel,
                    bool,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int32_t,
-                   int64_t,
                    float,
-                   double,
                    ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16,
-                   ::phi::dtype::complex<float>,
-                   ::phi::dtype::complex<double>) {}
+                   ::phi::dtype::bfloat16) {}
 

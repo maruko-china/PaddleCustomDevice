@@ -2,7 +2,7 @@
 #include "runtime/mudnn/Handle.h"
 #include "paddle/phi/extension.h"
 #include "kernels/musa/contiguous_kernel.h"
-namespace musa{  
+namespace custom_kernel{  
 
 
 void ConfigConv(
@@ -127,10 +127,8 @@ void Conv2dKernel(const Context& dev_ctx,
     filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    musa::UpdatePaddingAndDilation(
+    custom_kernel::UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
-
-
 
     auto weight_memory_format = filter.layout();
     PADDLE_ENFORCE(
@@ -138,19 +136,23 @@ void Conv2dKernel(const Context& dev_ctx,
         phi::errors::PreconditionNotMet("Paddle musa now only support NCHW/NCDHW"));
                 
     auto out_data = dev_ctx.template Alloc<T>(output);
-    phi::DenseTensor contiguous_input =  input;
-    phi::DenseTensor contiguous_filter =  filter;
+    phi::DenseTensor contiguous_input;
+    phi::DenseTensor contiguous_filter;
 
     if(!input.meta().is_contiguous()){
-        musa::ContiguousKernel<Context>(dev_ctx,input,&contiguous_input);
+        custom_kernel::ContiguousKernel<T,Context>(dev_ctx,input,&contiguous_input);
+    }else{
+      contiguous_input = input;
     }
     if(!filter.meta().is_contiguous()){
-        musa::ContiguousKernel<Context>(dev_ctx,filter,&contiguous_filter);
+        custom_kernel::ContiguousKernel<T,Context>(dev_ctx,filter,&contiguous_filter);
+    }else{
+      contiguous_filter = filter;
     }
     auto in = CreateMUTensor(contiguous_input);
     auto out = CreateMUTensor(*output);
     auto ke = CreateMUTensor(contiguous_filter);
-    muHandle& h = GetMudnnHandle<Context>(dev_ctx);
+    musa::muHandle& h = musa::GetMudnnHandle(dev_ctx);
     ::musa::dnn::Convolution c;
     ConfigConv(c, strides, paddings, dilations, groups);
     
@@ -170,9 +172,12 @@ void Conv2dKernel(const Context& dev_ctx,
 
 }      
 
+
 PD_REGISTER_PLUGIN_KERNEL(conv2d,
                           musa,
                           ALL_LAYOUT,
-                          musa::Conv2dKernel,
+                          custom_kernel::Conv2dKernel,
                           float,
-                          phi::dtype::float16) {}
+                          double,
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}

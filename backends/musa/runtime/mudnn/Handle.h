@@ -13,7 +13,7 @@ namespace musa {
 using mudnnHandle_t = ::musa::dnn::Handle*;
 using muHandle = ::musa::dnn::Handle;
 
-void CreateMuDNNHandle(mudnnHandle_t* handle) {
+inline void CreateMuDNNHandle(mudnnHandle_t* handle) {
     PADDLE_ENFORCE_NOT_NULL(
         handle, ::common::errors::InvalidType("Handle pointer is no-nullptr"));
     int device;
@@ -22,7 +22,7 @@ void CreateMuDNNHandle(mudnnHandle_t* handle) {
     *handle = new musa::muHandle(device);
 }
 
-void DestroyMuDNNHandle(mudnnHandle_t /*handle*/) {
+inline void DestroyMuDNNHandle(mudnnHandle_t /*handle*/) {
   // this is because of something dumb in the ordering of
   // destruction. Sometimes atexit, the musa context (or something)
   // would already be destroyed by the time this gets destroyed. It
