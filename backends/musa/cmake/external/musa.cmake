@@ -1,3 +1,4 @@
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/external)
 find_package(MUDNN)
 set(MUSA_DEPENDENT_LIBRARIES CACHE STRING "musa library.")
 

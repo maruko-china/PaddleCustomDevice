@@ -20,7 +20,6 @@
 
 #include "glog/logging.h"
 
-
 C_Status SetDevice(const C_Device device) {
   CHECK_MUSA(musaSetDevice(device->id));
   return C_SUCCESS;

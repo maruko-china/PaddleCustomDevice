@@ -57,7 +57,7 @@ void ConfigFormat(
     mudnn_format = muTensor::Format::NCHW;
   }else if(memory_format == phi::DataLayout::NCDHW){
     mudnn_format = muTensor::Format::NCDHW;
-  }else{
+  }else if((memory_format == phi::DataLayout::NDHWC) || (memory_format == phi::DataLayout::NHWC)){
     PADDLE_THROW(phi::errors::Unimplemented("muTensor now only support NCHW/NCDHW"));
   }
 
@@ -71,3 +71,19 @@ muTensor CreateMUTensor(const DenseTensor& t, bool permute_if_not_contiguous) {
   ConfigFormat(t, rst, permute_if_not_contiguous);
   return rst;
 }
+
+void MemFree(void* ptr) {
+  if (ptr) {
+    musaFree(ptr);
+  }
+}
+
+::musa::dnn::MemoryHandler InternalMemAlloc(size_t s) {
+  void* data = nullptr;
+  if (s) {
+    musaMalloc(&data, s);
+  }
+  return ::musa::dnn::MemoryHandler(data, MemFree);
+}
+
+

@@ -1,18 +1,23 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(paddle-custom-musa CXX C)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 set(PLUGIN_NAME "paddle-custom-musa")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+list(APPEND CMAKE_MODULE_PATH $ENV{MUSA_HOME}/cmake)
+list(APPEND MUSA_MCC_FLAGS --cuda-gpu-arch=mp_22)
+find_package(MUSA REQUIRED)
 
 include(paddle)
 include(version)
 include(generic)
 include(external/musa)
+include(third_party)
+
 include_directories(${CMAKE_SOURCE_DIR})
 
-option(WITH_KERNELS "compile with custom kernels" ON)
 option(WITH_TESTING "compile with unit testing" OFF)
 
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
@@ -24,14 +29,13 @@ message(STATUS "AR tools: ${CMAKE_AR}")
 add_definitions(-DPADDLE_WITH_CUSTOM_DEVICE)
 add_definitions(-DPADDLE_WITH_CUSTOM_KERNEL)
 
-# custom kernels
-if(WITH_KERNELS)
-  file(
-    GLOB_RECURSE CUSTOM_KERNEL_SRCS
-    RELATIVE ${CMAKE_SOURCE_DIR}
-    kernels/*.cc)
-  list(APPEND CUSTOM_MUSA_SRCS ${CUSTOM_KERNEL_SRCS})
-endif()
+# kernels
+file(
+  GLOB_RECURSE CUSTOM_KERNEL_SRCS
+  RELATIVE ${CMAKE_SOURCE_DIR}
+  kernels/*.cc)
+list(APPEND CUSTOM_MUSA_SRCS ${CUSTOM_KERNEL_SRCS})
+
 
 # custom runtime
 file(
@@ -43,12 +47,16 @@ list(APPEND CUSTOM_MUSA_SRCS ${CUSTOM_RUNTIME_SRCS})
 # build shared library
 add_library(${PLUGIN_NAME} SHARED ${CUSTOM_MUSA_SRCS})
 
+add_subdirectory(kernels/musa)
+
+
 # link paddle shared library
-include(third_party)
 add_dependencies(${PLUGIN_NAME} third_party)
 target_link_libraries(${PLUGIN_NAME} PRIVATE ${PADDLE_CORE_LIB})
 target_link_libraries(${PLUGIN_NAME} PRIVATE pybind)
 target_link_libraries(${PLUGIN_NAME} PRIVATE ${MUSA_DEPENDENT_LIBRARIES})
+target_link_libraries(${PLUGIN_NAME} PRIVATE musa_kernel)
+
 
 # testing
 if(WITH_TESTING)

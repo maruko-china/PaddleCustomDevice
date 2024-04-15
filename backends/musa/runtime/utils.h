@@ -16,4 +16,10 @@ void ConfigFormat(
     muTensor& mt,
     bool permute_if_not_contiguous);
 
+
+
 muTensor CreateMUTensor(const phi::DenseTensor& t, bool permute_if_not_contiguous=true);
+
+void MemFree(void* ptr);
+
+::musa::dnn::MemoryHandler InternalMemAlloc(size_t s);
