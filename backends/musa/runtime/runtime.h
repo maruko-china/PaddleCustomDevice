@@ -59,24 +59,35 @@ C_Status MemCpyd2h(const C_Device device,
                 const void *src,
                 size_t size);
 
-C_Status AsyncMemCpy(const C_Device device,
+C_Status AsyncMemCpyh2d(const C_Device device,
                      C_Stream stream,
                      void *dst,
                      const void *src,
                      size_t size);
 
-C_Status MemCpyP2P(const C_Device dst_device,
-                   const C_Device src_device,
-                   void *dst,
-                   const void *src,
-                   size_t size);
 
+C_Status AsyncMemCpyd2d(const C_Device device,
+                     C_Stream stream,
+                     void *dst,
+                     const void *src,
+                     size_t size);
+C_Status AsyncMemCpyd2h(const C_Device device,
+                     C_Stream stream,
+                     void *dst,
+                     const void *src,
+                     size_t size);
 C_Status AsyncMemCpyP2P(const C_Device dst_device,
                         const C_Device src_device,
                         C_Stream stream,
                         void *dst,
                         const void *src,
                         size_t size);
+
+C_Status MemCpyP2P(const C_Device dst_device,
+                   const C_Device src_device,
+                   void *dst,
+                   const void *src,
+                   size_t size);
 
 C_Status Device_Allocate(const C_Device device, void **ptr, size_t size);
 

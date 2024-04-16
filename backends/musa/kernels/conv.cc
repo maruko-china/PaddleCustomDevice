@@ -132,7 +132,7 @@ void Conv2dKernel(const Context& dev_ctx,
 
     auto weight_memory_format = filter.layout();
     PADDLE_ENFORCE(
-       (filter.layout() == phi::DataLayout::NCHW)|| (filter.layout() == phi::DataLayout::NCDHW) || channel_last,
+       (filter.layout() != phi::DataLayout::NHWC) && (filter.layout() != phi::DataLayout::NDHWC) && !channel_last,
         phi::errors::PreconditionNotMet("Paddle musa now only support NCHW/NCDHW"));
                 
     auto out_data = dev_ctx.template Alloc<T>(output);

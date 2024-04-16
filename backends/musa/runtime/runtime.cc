@@ -81,17 +81,33 @@ C_Status MemCpyd2h(const C_Device device,
   return C_SUCCESS;
 }
 
-C_Status AsyncMemCpy(const C_Device device,
+C_Status AsyncMemCpyd2d(const C_Device device,
                      C_Stream stream,
                      void *dst,
                      const void *src,
                      size_t size) {
-  musaError_t musaStatus;
-  musaStatus = musaSetDevice(device->id);
-  if (musaStatus != musaSuccess) {
-        return C_FAILED;
-  }
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMemcpyAsync(dst, src, size, musaMemcpyDeviceToDevice, reinterpret_cast<musaStream_t>(stream)));
+  return C_SUCCESS;
+}
 
+C_Status AsyncMemCpyd2h(const C_Device device,
+                     C_Stream stream,
+                     void *dst,
+                     const void *src,
+                     size_t size) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMemcpyAsync(dst, src, size, musaMemcpyDeviceToHost, reinterpret_cast<musaStream_t>(stream)));
+  return C_SUCCESS;
+}
+
+C_Status AsyncMemCpyh2d(const C_Device device,
+                     C_Stream stream,
+                     void *dst,
+                     const void *src,
+                     size_t size) {
+  CHECK_MUSA(musaSetDevice(device->id));
+  CHECK_MUSA(musaMemcpyAsync(dst, src, size, musaMemcpyHostToDevice, reinterpret_cast<musaStream_t>(stream)));
   return C_SUCCESS;
 }
 
@@ -353,9 +369,9 @@ void InitPlugin(CustomRuntimeParams *params) {
   params->interface->memory_copy_d2d = MemCpyd2d;
   params->interface->memory_copy_d2h = MemCpyd2h;
   params->interface->memory_copy_p2p = MemCpyP2P;
-  params->interface->async_memory_copy_h2d = AsyncMemCpy;
-  params->interface->async_memory_copy_d2d = AsyncMemCpy;
-  params->interface->async_memory_copy_d2h = AsyncMemCpy;
+  params->interface->async_memory_copy_h2d = AsyncMemCpyh2d;
+  params->interface->async_memory_copy_d2d = AsyncMemCpyd2d;
+  params->interface->async_memory_copy_d2h = AsyncMemCpyd2h;
   params->interface->async_memory_copy_p2p = AsyncMemCpyP2P;
   params->interface->device_memory_allocate = Device_Allocate;
   params->interface->host_memory_allocate = Host_Allocate;
